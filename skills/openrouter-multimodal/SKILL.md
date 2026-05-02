@@ -42,6 +42,7 @@ python3 scripts/generate_image.py "A cat wearing a hat" --aspect-ratio 16:9 --si
 **Key image models** (verify with API — models change):
 | Model | Notes |
 |-------|-------|
+| `openrouter/auto` | **Default.** Auto-routes to best image-capable model |
 | `google/gemini-3.1-flash-image-preview` | Extended aspect ratios, 0.5K–4K |
 | `google/gemini-2.5-flash-image` | Standard |
 | `black-forest-labs/flux.2-pro` | Image-only output |
@@ -100,7 +101,7 @@ curl -s https://openrouter.ai/api/v1/chat/completions \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "google/gemini-2.5-flash-image",
+    "model": "openrouter/auto",
     "messages": [{"role": "user", "content": "A sunset over mountains"}],
     "modalities": ["image", "text"]
   }'
@@ -124,7 +125,7 @@ JOB=$(curl -s https://openrouter.ai/api/v1/videos \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "google/veo-3.1",
+    "model": "bytedance/seedance-2.0",
     "prompt": "A golden retriever playing on a beach",
     "resolution": "720p",
     "aspect_ratio": "16:9"

@@ -9,7 +9,7 @@ import time
 import urllib.request
 
 
-def submit_video_job(prompt: str, model: str = "google/veo-3.1",
+def submit_video_job(prompt: str, model: str = "bytedance/seedance-2.0",
                      resolution: str = "720p", aspect_ratio: str = "16:9",
                      duration: int = None, callback_url: str = None):
     api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -96,7 +96,7 @@ def download_content(job_id: str, output: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate video via OpenRouter")
     parser.add_argument("prompt", help="Video generation prompt")
-    parser.add_argument("--model", default="google/veo-3.1")
+    parser.add_argument("--model", default="bytedance/seedance-2.0")
     parser.add_argument("--resolution", default="720p", help="480p, 720p, 1080p")
     parser.add_argument("--aspect-ratio", default="16:9", help="16:9, 9:16, 1:1")
     parser.add_argument("--duration", type=int, help="Duration in seconds")

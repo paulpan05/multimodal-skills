@@ -9,7 +9,7 @@ import sys
 import urllib.request
 
 
-def generate_image(prompt: str, model: str = "google/gemini-2.5-flash-image",
+def generate_image(prompt: str, model: str = "openrouter/auto",
                    aspect_ratio: str = "1:1", image_size: str = "1K",
                    output: str = "generated.png", modalities: list = None):
     api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -73,7 +73,7 @@ def generate_image(prompt: str, model: str = "google/gemini-2.5-flash-image",
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate image via OpenRouter")
     parser.add_argument("prompt", help="Image generation prompt")
-    parser.add_argument("--model", default="google/gemini-2.5-flash-image")
+    parser.add_argument("--model", default="openrouter/auto")
     parser.add_argument("--aspect-ratio", default="1:1", help="1:1, 16:9, 9:16, etc.")
     parser.add_argument("--size", default="1K", help="0.5K, 1K, 2K, 4K")
     parser.add_argument("--output", "-o", default="generated.png", help="Output file path")

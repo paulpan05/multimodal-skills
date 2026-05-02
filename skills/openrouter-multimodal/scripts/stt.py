@@ -9,7 +9,7 @@ import sys
 import urllib.request
 
 
-def stt(audio_path: str, model: str = "openai/whisper-1", language: str = None,
+def stt(audio_path: str, model: str = "openai/whisper-large-v3-turbo", language: str = None,
         format: str = None):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
@@ -62,7 +62,7 @@ def stt(audio_path: str, model: str = "openai/whisper-1", language: str = None,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="STT via OpenRouter")
     parser.add_argument("audio", help="Path to audio file")
-    parser.add_argument("--model", default="openai/whisper-1")
+    parser.add_argument("--model", default="openai/whisper-large-v3-turbo")
     parser.add_argument("--language", help="ISO-639-1 code (auto-detect if omitted)")
     parser.add_argument("--format", help="Audio format (auto-detected from extension)")
     args = parser.parse_args()
