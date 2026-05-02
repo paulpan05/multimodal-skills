@@ -52,7 +52,7 @@ curl -s https://openrouter.ai/api/v1/chat/completions \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "google/gemini-2.5-flash-preview-image-generation",
+    "model": "google/gemini-2.5-flash-image",
     "messages": [{"role": "user", "content": "A sunset over mountains"}],
     "modalities": ["image", "text"]
   }'
@@ -70,7 +70,7 @@ Response: `choices[0].message.images[i].image_url.url` (base64 data URL, typical
 
 **Image generation models** (verify with API — models change):
 - `google/gemini-3.1-flash-image-preview` — extended aspect ratios, 0.5K–4K
-- `google/gemini-2.5-flash-preview-image-generation` — standard
+- `google/gemini-2.5-flash-image` — standard
 - `black-forest-labs/flux.2-pro` — image-only output
 - `black-forest-labs/flux.2-flex` — image-only output
 - `sourceful/riverflow-v2-standard-preview` — font inputs, super resolution
