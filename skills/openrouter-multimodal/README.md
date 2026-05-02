@@ -15,7 +15,7 @@ This skill teaches AI agents how to use OpenRouter's multimodal endpoints:
 ## Install
 
 ```bash
-npx skills add paulpan05/openrouter-multimodal-skill
+npx skills add paulpan05/multimodal-skills
 ```
 
 ## Prerequisites

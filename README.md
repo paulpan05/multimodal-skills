@@ -5,7 +5,7 @@ A collection of skills for AI coding agents. Skills follow the [Agent Skills](ht
 ## Install
 
 ```bash
-npx skills add paulpan05/openrouter-multimodal-skill
+npx skills add paulpan05/multimodal-skills
 ```
 
 ## Available Skills
