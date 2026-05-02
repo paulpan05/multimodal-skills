@@ -23,65 +23,45 @@ npx skills add paulpan05/openrouter-multimodal-skill
 - An [OpenRouter API key](https://openrouter.ai/settings/keys)
 - Set `OPENROUTER_API_KEY` in your environment or agent config (e.g. `~/.hermes/.env`)
 
-## Quick examples
+## Usage
 
 ### Generate an image
 
 ```bash
-curl -s https://openrouter.ai/api/v1/chat/completions \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "google/gemini-2.5-flash-image",
-    "messages": [{"role": "user", "content": "A sunset over mountains"}],
-    "modalities": ["image", "text"]
-  }'
+python3 scripts/generate_image.py "A sunset over mountains" -o sunset.png
+
+# With options
+python3 scripts/generate_image.py "A cat wearing a hat" --aspect-ratio 16:9 --size 2K -o cat.png
 ```
 
 ### Generate a video
 
 ```bash
-# Submit job
-JOB=$(curl -s https://openrouter.ai/api/v1/videos \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "google/veo-3.1",
-    "prompt": "A golden retriever playing on a beach",
-    "resolution": "720p",
-    "aspect_ratio": "16:9"
-  }')
-JOB_ID=$(echo "$JOB" | jq -r '.id')
+python3 scripts/generate_video.py "A golden retriever playing on a beach" -o video.mp4
 
-# Poll until complete, then download
-curl -s "https://openrouter.ai/api/v1/videos/$JOB_ID/content" \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" -o video.mp4
+# Custom resolution and aspect ratio
+python3 scripts/generate_video.py "Ocean waves crashing" --resolution 1080p --aspect-ratio 16:9 -o waves.mp4
 ```
 
 ### Text-to-speech
 
 ```bash
-curl -s https://openrouter.ai/api/v1/audio/speech \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "openai/gpt-4o-mini-tts-2025-12-15",
-    "input": "Hello world, this is a test.",
-    "voice": "alloy",
-    "response_format": "mp3"
-  }' -o speech.mp3
+python3 scripts/tts.py "Hello world, this is a test." -o speech.mp3
+
+# With voice and speed options
+python3 scripts/tts.py "Welcome to the show." --voice nova --speed 1.2 -o welcome.mp3
 ```
 
-## Included scripts
+### Speech-to-text
 
-| Script | Description |
-|--------|-------------|
-| `scripts/generate_image.py` | Generate an image and save to file |
-| `scripts/generate_video.py` | Submit video gen job, poll, download |
-| `scripts/tts.py` | Text-to-speech, save audio file |
-| `scripts/stt.py` | Speech-to-text from audio file |
+```bash
+python3 scripts/stt.py recording.wav
 
-## Discover models
+# Specify language
+python3 scripts/stt.py recording.mp3 --language en
+```
+
+### Discover available models
 
 ```bash
 # Image models
@@ -99,7 +79,7 @@ curl -s "https://openrouter.ai/api/v1/models?output_modalities=transcription" | 
 
 ## Full API reference
 
-See [SKILL.md](./SKILL.md) for the complete reference covering all endpoints, parameters, and configuration options.
+See [SKILL.md](./SKILL.md) for the complete endpoint reference covering all parameters, configuration options, and multimodal input formats.
 
 ## License
 

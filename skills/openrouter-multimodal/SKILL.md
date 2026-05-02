@@ -21,13 +21,67 @@ Generate images, video, audio, and process multimodal content through OpenRouter
 1. **OpenRouter API key** — get one at https://openrouter.ai/settings/keys
 2. Set `OPENROUTER_API_KEY` in `~/.hermes/.env` or export in shell
 
-## API Base URL
+## Scripts
 
-```
-https://openrouter.ai/api/v1
+The preferred way to use this skill. Each script handles auth, API calls, base64 encoding/decoding, polling, and error handling automatically.
+
+- `scripts/generate_image.py` — Generate image and save to file
+- `scripts/generate_video.py` — Submit video gen job, poll, download
+- `scripts/tts.py` — Text-to-speech, save audio file
+- `scripts/stt.py` — Speech-to-text from audio file
+
+### Image Generation
+
+```bash
+python3 scripts/generate_image.py "A sunset over mountains" -o sunset.png
+
+# Options: --model, --aspect-ratio (1:1, 16:9, 9:16, etc.), --size (0.5K, 1K, 2K, 4K), --output
+python3 scripts/generate_image.py "A cat wearing a hat" --aspect-ratio 16:9 --size 2K -o cat.png
 ```
 
-## Authentication
+**Key image models** (verify with API — models change):
+| Model | Notes |
+|-------|-------|
+| `google/gemini-3.1-flash-image-preview` | Extended aspect ratios, 0.5K–4K |
+| `google/gemini-2.5-flash-image` | Standard |
+| `black-forest-labs/flux.2-pro` | Image-only output |
+| `black-forest-labs/flux.2-flex` | Image-only output |
+
+### Video Generation
+
+```bash
+python3 scripts/generate_video.py "A golden retriever playing on a beach" -o video.mp4
+
+# Options: --model, --resolution (480p, 720p, 1080p), --aspect-ratio, --duration, --poll-interval, --max-wait
+# Resume polling an existing job:
+python3 scripts/generate_video.py "unused" --job-id <JOB_ID> -o video.mp4
+```
+
+### Text-to-Speech
+
+```bash
+python3 scripts/tts.py "Hello world, this is a test." -o speech.mp3
+
+# Options: --model, --voice (alloy, echo, fable, onyx, nova, shimmer), --format (mp3, pcm), --speed
+python3 scripts/tts.py "Welcome to the show." --voice nova --speed 1.2 -o welcome.mp3
+```
+
+### Speech-to-Text
+
+```bash
+python3 scripts/stt.py recording.wav
+
+# Options: --model, --language (ISO-639-1), --format (auto-detected from extension)
+python3 scripts/stt.py recording.mp3 --language en
+```
+
+---
+
+## API Reference
+
+The scripts above wrap these OpenRouter endpoints. Use these directly if you need lower-level control.
+
+### Authentication
 
 All requests require:
 ```
@@ -35,19 +89,13 @@ Authorization: Bearer $OPENROUTER_API_KEY
 Content-Type: application/json
 ```
 
-## Scripts
-
-- `scripts/generate_image.py` — Generate image and save to file
-- `scripts/generate_video.py` — Submit video gen job, poll, download
-- `scripts/tts.py` — Text-to-speech, save audio file
-- `scripts/stt.py` — Speech-to-text from audio file
-
-## Quick Reference
+API Base URL: `https://openrouter.ai/api/v1`
 
 ### Image Generation
 
+**Endpoint:** `POST /chat/completions` — returns base64 data URL in `choices[0].message.images[i].image_url.url`
+
 ```bash
-# Generate an image via chat completions
 curl -s https://openrouter.ai/api/v1/chat/completions \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
@@ -58,8 +106,6 @@ curl -s https://openrouter.ai/api/v1/chat/completions \
   }'
 ```
 
-Response: `choices[0].message.images[i].image_url.url` (base64 data URL, typically PNG)
-
 **Image config options** (add to payload):
 ```json
 "image_config": {
@@ -68,21 +114,9 @@ Response: `choices[0].message.images[i].image_url.url` (base64 data URL, typical
 }
 ```
 
-**Image generation models** (verify with API — models change):
-- `google/gemini-3.1-flash-image-preview` — extended aspect ratios, 0.5K–4K
-- `google/gemini-2.5-flash-image` — standard
-- `black-forest-labs/flux.2-pro` — image-only output
-- `black-forest-labs/flux.2-flex` — image-only output
-- `sourceful/riverflow-v2-standard-preview` — font inputs, super resolution
-
-**Discover image models:**
-```bash
-curl -s "https://openrouter.ai/api/v1/models?output_modalities=image" | jq '.data[].id'
-```
-
 ### Video Generation (Async)
 
-Video generation is **asynchronous** — submit, get job ID, poll until done, then download.
+Three-step process: Submit → Poll → Download.
 
 ```bash
 # 1. Submit
@@ -113,76 +147,32 @@ curl -s "https://openrouter.ai/api/v1/videos/$JOB_ID/content" \
 ]
 ```
 
-**Discover video models:**
-```bash
-curl -s "https://openrouter.ai/api/v1/videos/models" | jq '.[].id'
-```
+### Text-to-Speech
 
-### Text-to-Speech (TTS)
+**Endpoint:** `POST /audio/speech` — returns raw audio bytes (not JSON).
 
-Dedicated endpoint — returns **raw audio bytes** (not JSON).
-
-```bash
-curl -s https://openrouter.ai/api/v1/audio/speech \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "openai/gpt-4o-mini-tts-2025-12-15",
-    "input": "Hello world, this is a test.",
-    "voice": "alloy",
-    "response_format": "mp3"
-  }' -o speech.mp3
-```
-
-**Parameters:**
 | Param | Required | Description |
 |-------|----------|-------------|
 | `model` | Yes | TTS model slug |
 | `input` | Yes | Text to synthesize |
-| `voice` | Yes | Voice ID (varies by model: alloy, echo, fable, onyx, nova, shimmer) |
+| `voice` | Yes | Voice ID (alloy, echo, fable, onyx, nova, shimmer) |
 | `response_format` | No | `mp3` or `pcm` (default: pcm) |
 | `speed` | No | Playback speed (1.0 default, OpenAI only) |
 
-**Discover TTS models:**
-```bash
-curl -s "https://openrouter.ai/api/v1/models?output_modalities=speech" | jq '.data[].id'
-```
+### Speech-to-Text
 
-### Speech-to-Text (STT)
+**Endpoint:** `POST /audio/transcriptions` — returns `{ "text": "...", "usage": { "seconds": N, "cost": N } }`
 
-Dedicated endpoint — returns JSON with transcribed text.
-
-```bash
-# Encode audio first
-AUDIO_B64=$(base64 -w0 audio.wav)
-
-curl -s https://openrouter.ai/api/v1/audio/transcriptions \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"model\": \"openai/whisper-1\",
-    \"input_audio\": {\"data\": \"$AUDIO_B64\", \"format\": \"wav\"}
-  }"
-```
-
-**Response:** `{ "text": "...", "usage": { "seconds": N, "cost": N } }`
-
-**Parameters:**
 | Param | Required | Description |
 |-------|----------|-------------|
 | `model` | Yes | STT model slug |
 | `input_audio.data` | Yes | Base64-encoded audio (raw bytes, NOT data URI) |
-| `input_audio.format` | Yes | `wav`, `mp3`, `flac`, `m4a`, `ogg`, `webm`, `aac` |
+| `input_audio.format` | Yes | wav, mp3, flac, m4a, ogg, webm, aac |
 | `language` | No | ISO-639-1 code (auto-detected if omitted) |
-
-**Discover STT models:**
-```bash
-curl -s "https://openrouter.ai/api/v1/models?output_modalities=transcription" | jq '.data[].id'
-```
 
 ### Sending Multimodal Inputs to Chat Models
 
-All via `/api/v1/chat/completions` with content arrays in messages:
+All via `/chat/completions` with content arrays in messages:
 
 ```python
 # Image input
@@ -199,6 +189,19 @@ All via `/api/v1/chat/completions` with content arrays in messages:
 # Video input
 {"type": "video_url", "video_url": {"url": "https://youtube.com/watch?v=..."}}
 # or base64: {"url": "data:video/mp4;base64,..."}
+```
+
+### Discover Models
+
+```bash
+# Image
+curl -s "https://openrouter.ai/api/v1/models?output_modalities=image" | jq '.data[].id'
+# Video
+curl -s "https://openrouter.ai/api/v1/videos/models" | jq '.[].id'
+# TTS
+curl -s "https://openrouter.ai/api/v1/models?output_modalities=speech" | jq '.data[].id'
+# STT
+curl -s "https://openrouter.ai/api/v1/models?output_modalities=transcription" | jq '.data[].id'
 ```
 
 ## Tips
