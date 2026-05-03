@@ -2,8 +2,10 @@
 """Generate audio output from a chat model via OpenRouter.
 
 Sends a text prompt to a model that can produce audio output and saves the
-returned audio to a file. Supports models that return audio as part of their
-chat completion response.
+returned audio to a file. Audio output requires streaming (stream: true).
+
+Default model is openai/gpt-4o-audio-preview since openrouter/auto does not
+route to audio-output capable models.
 """
 
 import argparse
@@ -16,10 +18,10 @@ import urllib.request
 
 def audio_output(
     prompt: str,
-    model: str = "openrouter/auto",
+    model: str = "openai/gpt-4o-audio-preview",
     output: str = "output_audio.wav",
     voice: str = "alloy",
-    audio_format: str = "wav",
+    audio_format: str = "pcm16",
     temperature: float = None,
     max_tokens: int = None,
 ):
@@ -29,8 +31,10 @@ def audio_output(
         sys.exit(1)
 
     # Build the messages payload requesting audio output
+    # Audio output REQUIRES stream: true
     payload = {
         "model": model,
+        "stream": True,
         "modalities": ["text", "audio"],
         "audio": {"voice": voice, "format": audio_format},
         "messages": [{"role": "user", "content": prompt}],
@@ -51,72 +55,78 @@ def audio_output(
         },
     )
 
+    # Parse SSE stream to collect audio chunks
+    audio_data_chunks = []
+    transcript_chunks = []
+    model_used = None
+    usage_info = None
+
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
+            buffer = ""
+            for raw_line in resp:
+                line = raw_line.decode("utf-8", errors="replace")
+                buffer += line
+
+                if not line.strip():
+                    # End of SSE event — process buffer
+                    if buffer.startswith("data: "):
+                        event_data = buffer[6:].strip()
+                        buffer = ""
+                        if event_data == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(event_data)
+                        except json.JSONDecodeError:
+                            continue
+
+                        if not model_used:
+                            model_used = chunk.get("model", model)
+
+                        # Extract audio and transcript from delta
+                        choices = chunk.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            audio = delta.get("audio", {})
+                            if audio.get("data"):
+                                audio_data_chunks.append(audio["data"])
+                            if audio.get("transcript"):
+                                transcript_chunks.append(audio["transcript"])
+
+                        # Check for usage in final chunk
+                        if chunk.get("usage"):
+                            usage_info = chunk["usage"]
+                    else:
+                        buffer = ""
+
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         print(f"HTTP {e.code}: {body}", file=sys.stderr)
         sys.exit(1)
 
-    # Extract audio from the response
-    choices = result.get("choices", [])
-    if not choices:
-        print("No response from model.", file=sys.stderr)
+    # Combine and save audio
+    if audio_data_chunks:
+        full_audio_b64 = "".join(audio_data_chunks)
+        audio_bytes = base64.b64decode(full_audio_b64)
+        with open(output, "wb") as f:
+            f.write(audio_bytes)
+        print(f"Saved audio: {output} ({len(audio_bytes)} bytes)")
+    else:
+        print("No audio data received from model.", file=sys.stderr)
         sys.exit(1)
 
-    message = choices[0].get("message", {})
+    # Print transcript if available
+    transcript = "".join(transcript_chunks)
+    if transcript:
+        print(f"\nTranscript: {transcript}")
 
-    # Check for audio in the response
-    audio_data = message.get("audio", {})
-    audio_id = audio_data.get("id")
-
-    if audio_id:
-        # The audio content may be returned as base64 data
-        audio_b64 = audio_data.get("data")
-        if audio_b64:
-            audio_bytes = base64.b64decode(audio_b64)
-            with open(output, "wb") as f:
-                f.write(audio_bytes)
-            print(f"Saved audio: {output} ({len(audio_bytes)} bytes)")
-        else:
-            print(f"Audio ID returned: {audio_id}", file=sys.stderr)
-            print("No inline audio data. Check if the model requires a separate fetch.", file=sys.stderr)
-            # Print any text content as well
-            text = message.get("content", "")
-            if text:
-                print(f"\nModel text response:\n{text}")
-    else:
-        # Fallback: check if audio is in a different location in the response
-        content_parts = message.get("content", "")
-        if isinstance(content_parts, list):
-            for part in content_parts:
-                if isinstance(part, dict) and part.get("type") == "input_audio":
-                    b64_data = part.get("input_audio", {}).get("data", "")
-                    if b64_data:
-                        audio_bytes = base64.b64decode(b64_data)
-                        with open(output, "wb") as f:
-                            f.write(audio_bytes)
-                        print(f"Saved audio: {output} ({len(audio_bytes)} bytes)")
-                        break
-            else:
-                print("No audio data found in response.", file=sys.stderr)
-                if isinstance(content_parts, str) and content_parts:
-                    print(f"\nModel text response:\n{content_parts}")
-                sys.exit(1)
-        else:
-            print("No audio data found in response.", file=sys.stderr)
-            if isinstance(content_parts, str) and content_parts:
-                print(f"\nModel text response:\n{content_parts}")
-            sys.exit(1)
-
-    # Print usage info to stderr
-    usage = result.get("usage", {})
-    if usage:
+    # Print usage info
+    if usage_info:
         print(
-            f"\n--- Usage: {usage.get('prompt_tokens', '?')} prompt + "
-            f"{usage.get('completion_tokens', '?')} completion tokens, "
-            f"cost: ${usage.get('total_cost', usage.get('cost', '?'))} ---",
+            f"\n--- Model: {model_used} | Tokens: "
+            f"{usage_info.get('prompt_tokens', '?')} prompt + "
+            f"{usage_info.get('completion_tokens', '?')} completion, "
+            f"cost: ${usage_info.get('total_cost', usage_info.get('cost', '?'))} ---",
             file=sys.stderr,
         )
 
@@ -126,14 +136,15 @@ if __name__ == "__main__":
         description="Generate audio output from a chat model via OpenRouter"
     )
     parser.add_argument("prompt", help="Text prompt for audio generation")
-    parser.add_argument("--model", "-m", default="openrouter/auto",
-                        help="Model to use (default: openrouter/auto)")
+    parser.add_argument("--model", "-m", default="openai/gpt-4o-audio-preview",
+                        help="Model to use (default: openai/gpt-4o-audio-preview)")
     parser.add_argument("--output", "-o", default="output_audio.wav",
                         help="Output audio file path")
     parser.add_argument("--voice", "-v", default="alloy",
                         help="Voice: alloy, echo, fable, onyx, nova, shimmer")
-    parser.add_argument("--format", "-f", default="wav",
-                        help="Audio format: wav, mp3, flac, opus, aac (default: wav)")
+    parser.add_argument("--format", "-f", default="pcm16",
+                        help="Audio format: pcm16, mp3, flac, opus, aac (default: pcm16)")
+    # Note: wav is not supported in streaming mode; pcm16 is raw PCM
     parser.add_argument("--temperature", "-t", type=float, help="Sampling temperature")
     parser.add_argument("--max-tokens", type=int, help="Max tokens in response")
     args = parser.parse_args()

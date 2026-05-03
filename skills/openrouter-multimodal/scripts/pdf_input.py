@@ -16,13 +16,20 @@ def pdf_input(pdf_path: str, prompt: str = "Summarize this document.",
         print("Error: OPENROUTER_API_KEY not set", file=sys.stderr)
         sys.exit(1)
 
-    if not os.path.exists(pdf_path):
-        print(f"Error: File not found: {pdf_path}", file=sys.stderr)
-        sys.exit(1)
+    # Determine if it's a URL or local file
+    is_url = pdf_path.startswith("http://") or pdf_path.startswith("https://")
 
-    # Read and base64-encode the PDF
-    with open(pdf_path, "rb") as f:
-        pdf_b64 = base64.b64encode(f.read()).decode("utf-8")
+    if is_url:
+        file_data = pdf_path
+    else:
+        if not os.path.exists(pdf_path):
+            print(f"Error: File not found: {pdf_path}", file=sys.stderr)
+            sys.exit(1)
+        with open(pdf_path, "rb") as f:
+            pdf_b64 = base64.b64encode(f.read()).decode("utf-8")
+        file_data = f"data:application/pdf;base64,{pdf_b64}"
+
+    filename = os.path.basename(pdf_path) if not is_url else pdf_path.split("/")[-1]
 
     payload = {
         "model": model,
@@ -31,16 +38,15 @@ def pdf_input(pdf_path: str, prompt: str = "Summarize this document.",
                 "role": "user",
                 "content": [
                     {
-                        "type": "file",
-                        "file": {
-                            "file_data": {
-                                "url": f"data:application/pdf;base64,{pdf_b64}",
-                            },
-                        },
-                    },
-                    {
                         "type": "text",
                         "text": prompt,
+                    },
+                    {
+                        "type": "file",
+                        "file": {
+                            "filename": filename,
+                            "file_data": file_data,
+                        },
                     },
                 ],
             }
@@ -65,6 +71,7 @@ def pdf_input(pdf_path: str, prompt: str = "Summarize this document.",
         print(f"HTTP {e.code}: {body}", file=sys.stderr)
         sys.exit(1)
 
+    model_used = result.get("model", "?")
     text = result.get("choices", [{}])[0].get("message", {}).get("content", "")
     if not text:
         print("No text response returned.", file=sys.stderr)
@@ -74,15 +81,15 @@ def pdf_input(pdf_path: str, prompt: str = "Summarize this document.",
 
     usage = result.get("usage", {})
     if usage:
-        print(f"\n--- Usage: {usage.get('prompt_tokens', '?')} prompt + "
-              f"{usage.get('completion_tokens', '?')} completion tokens, "
+        print(f"\n--- Model: {model_used} | Tokens: {usage.get('prompt_tokens', '?')} prompt + "
+              f"{usage.get('completion_tokens', '?')} completion, "
               f"cost: ${usage.get('total_cost', usage.get('cost', '?'))} ---",
               file=sys.stderr)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Send PDF to model via OpenRouter")
-    parser.add_argument("pdf", help="Path to PDF file")
+    parser.add_argument("pdf", help="Path to PDF file or URL")
     parser.add_argument("--prompt", "-p", default="Summarize this document.",
                         help="Prompt to send with the PDF")
     parser.add_argument("--model", default="openrouter/auto",

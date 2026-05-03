@@ -159,14 +159,13 @@ python3 scripts/audio_output.py "Say hello in a friendly tone" -o greeting.wav
 # With options
 python3 scripts/audio_output.py "Explain quantum computing" --voice alloy --format mp3 -o quantum.mp3
 
-# Options: --model, --voice (alloy, echo, fable, onyx, nova, shimmer), --format (wav, mp3, flac, opus, aac), --output
+# Options: --model, --voice (alloy, echo, fable, onyx, nova, shimmer), --format (pcm16, mp3, flac, opus, aac), --output
 ```
 
 **Key audio output models:**
 | Model | Notes |
 |-------|-------|
-| `openrouter/auto` | **Default.** Auto-routes to best model |
-| `openai/gpt-4o-audio-preview` | OpenAI audio output specialist |
+| `openai/gpt-4o-audio-preview` | **Default.** Audio output requires streaming, not supported by auto-router |
 | `openai/gpt-4o-mini-audio-preview` | Cheaper alternative |
 
 ### Video Input (Analysis)
