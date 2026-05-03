@@ -12,7 +12,7 @@ import sys
 import urllib.request
 
 
-def video_input(prompt: str, video_source: str, model: str = "google/gemini-2.5-flash",
+def video_input(prompt: str, video_source: str, model: str = "openrouter/auto",
                 system_prompt: str = None, max_tokens: int = None):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:

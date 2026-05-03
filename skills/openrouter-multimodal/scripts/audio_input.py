@@ -16,7 +16,7 @@ import urllib.request
 def audio_input(
     audio_path: str,
     prompt: str = "Please transcribe and describe this audio.",
-    model: str = "google/gemini-2.5-flash",
+    model: str = "openrouter/auto",
     audio_format: str = None,
     temperature: float = None,
     max_tokens: int = None,

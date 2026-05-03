@@ -16,7 +16,7 @@ import urllib.request
 
 def audio_output(
     prompt: str,
-    model: str = "openai/gpt-4o-audio-preview",
+    model: str = "openrouter/auto",
     output: str = "output_audio.wav",
     voice: str = "alloy",
     audio_format: str = "wav",

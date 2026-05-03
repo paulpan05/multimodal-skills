@@ -10,7 +10,7 @@ import urllib.request
 
 
 def image_input(image_path: str, prompt: str = "Describe this image.",
-                model: str = "openai/gpt-4o-mini", detail: str = "auto"):
+                model: str = "openrouter/auto", detail: str = "auto"):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         print("Error: OPENROUTER_API_KEY not set", file=sys.stderr)

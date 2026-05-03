@@ -10,7 +10,7 @@ import urllib.request
 
 
 def pdf_input(pdf_path: str, prompt: str = "Summarize this document.",
-              model: str = "google/gemini-2.0-flash-001"):
+              model: str = "openrouter/auto"):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         print("Error: OPENROUTER_API_KEY not set", file=sys.stderr)
