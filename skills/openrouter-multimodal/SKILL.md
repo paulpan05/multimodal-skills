@@ -1,12 +1,12 @@
 ---
 name: openrouter-multimodal
 description: "Generate images, video, audio (TTS/STT), and process multimodal content via OpenRouter's unified API. Trigger when user wants to generate images, video, TTS, STT, or send multimodal inputs (images, PDFs, audio, video) to models through OpenRouter."
-version: 1.0.0
+version: 2.0.0
 author: community
 license: MIT
 metadata:
   hermes:
-    tags: [OpenRouter, Image-Generation, Video-Generation, TTS, STT, Multimodal, API]
+    tags: [OpenRouter, Image-Generation, Video-Generation, TTS, STT, Multimodal, API, Image-Input, PDF-Input, Audio-Input, Audio-Output, Video-Input]
     homepage: https://openrouter.ai/docs
 prerequisites:
   env_vars: [OPENROUTER_API_KEY]
@@ -14,7 +14,7 @@ prerequisites:
 
 # OpenRouter Multimodal API
 
-Generate images, video, audio, and process multimodal content through OpenRouter's unified API with a single API key.
+Generate images, video, audio, and process multimodal content through OpenRouter's unified API with a single API key. Covers all 9 OpenRouter multimodal capabilities.
 
 ## Prerequisites
 
@@ -25,10 +25,20 @@ Generate images, video, audio, and process multimodal content through OpenRouter
 
 The preferred way to use this skill. Each script handles auth, API calls, base64 encoding/decoding, polling, and error handling automatically.
 
-- `scripts/generate_image.py` — Generate image and save to file
-- `scripts/generate_video.py` — Submit video gen job, poll, download
-- `scripts/tts.py` — Text-to-speech, save audio file
-- `scripts/stt.py` — Speech-to-text from audio file
+### Output Generation (4 scripts)
+
+- `scripts/generate_image.py` — Generate images from text prompts
+- `scripts/generate_video.py` — Generate videos from text (async submit/poll/download)
+- `scripts/tts.py` — Text-to-speech via dedicated `/audio/speech` endpoint
+- `scripts/stt.py` — Speech-to-text via dedicated `/audio/transcriptions` endpoint
+
+### Multimodal Input (5 scripts)
+
+- `scripts/image_input.py` — Send images to vision models for analysis/description/OCR
+- `scripts/pdf_input.py` — Process PDFs with configurable parsing engine
+- `scripts/audio_input.py` — Send audio files to models via chat completions
+- `scripts/audio_output.py` — Receive audio responses from chat models
+- `scripts/video_input.py` — Send video to models for analysis/description
 
 ### Image Generation
 
@@ -75,6 +85,106 @@ python3 scripts/stt.py recording.wav
 # Options: --model, --language (ISO-639-1), --format (auto-detected from extension)
 python3 scripts/stt.py recording.mp3 --language en
 ```
+
+### Image Input (Vision/Analysis)
+
+Send images to vision-capable models for analysis, description, OCR, and more.
+
+```bash
+# From URL
+python3 scripts/image_input.py https://example.com/photo.jpg "Describe this image in detail"
+
+# From local file
+python3 scripts/image_input.py ./photo.png "What objects are in this image?"
+
+# Options: --model, --detail (auto/low/high)
+python3 scripts/image_input.py ./chart.png "Extract all data from this chart" --model google/gemini-2.5-flash
+```
+
+**Key vision models:**
+| Model | Notes |
+|-------|-------|
+| `openrouter/auto` | **Default.** Auto-routes to best model |
+| `google/gemini-2.5-flash` | Fast, strong vision |
+| `openai/gpt-4o-mini` | Good for basic OCR/description |
+| `anthropic/claude-sonnet-4` | Detailed analysis |
+
+### PDF Input
+
+Process PDF documents with any model. Supports configurable parsing engines.
+
+```bash
+# From URL
+python3 scripts/pdf_input.py https://bitcoin.org/bitcoin.pdf "Summarize this document"
+
+# From local file
+python3 scripts/pdf_input.py ./report.pdf "What are the key findings?"
+
+# Options: --model, --engine (cloudflare-ai/mistral-ocr/native)
+python3 scripts/pdf_input.py ./scan.pdf "Extract all text" --engine mistral-ocr --model anthropic/claude-sonnet-4
+```
+
+**PDF engines:**
+| Engine | Notes |
+|--------|-------|
+| `mistral-ocr` | **Default.** Best for scanned docs/images |
+| `cloudflare-ai` | Free, converts PDF to markdown |
+| `native` | Uses model's native file support |
+
+### Audio Input (Chat Completions)
+
+Send audio files to models for transcription, analysis, and processing. Audio must be base64-encoded (URLs not supported).
+
+```bash
+# Basic transcription
+python3 scripts/audio_input.py recording.wav "Transcribe this audio"
+
+# Analysis
+python3 scripts/audio_input.py meeting.mp3 "What was discussed in this meeting?"
+
+# Options: --model, --format (auto-detected from extension), --temperature, --max-tokens
+python3 scripts/audio_input.py podcast.flac "Summarize the key points" --model google/gemini-2.5-flash
+```
+
+**Supported formats:** wav, mp3, flac, ogg, aac, m4a, aiff, pcm16, pcm24 (auto-detected from extension)
+
+### Audio Output (Chat Completions)
+
+Receive audio responses from models with audio output capabilities. Uses streaming to collect audio data.
+
+```bash
+# Basic usage
+python3 scripts/audio_output.py "Say hello in a friendly tone" -o greeting.wav
+
+# With options
+python3 scripts/audio_output.py "Explain quantum computing" --voice alloy --format mp3 -o quantum.mp3
+
+# Options: --model, --voice (alloy, echo, fable, onyx, nova, shimmer), --format (wav, mp3, flac, opus, aac), --output
+```
+
+**Key audio output models:**
+| Model | Notes |
+|-------|-------|
+| `openrouter/auto` | **Default.** Auto-routes to best model |
+| `openai/gpt-4o-audio-preview` | OpenAI audio output specialist |
+| `openai/gpt-4o-mini-audio-preview` | Cheaper alternative |
+
+### Video Input (Analysis)
+
+Send video files to video-capable models for analysis, description, and understanding.
+
+```bash
+# From YouTube URL (Gemini models)
+python3 scripts/video_input.py "https://youtube.com/watch?v=..." "Describe what happens in this video"
+
+# From local file
+python3 scripts/video_input.py ./clip.mp4 "What objects are visible?"
+
+# Options: --model, --max-tokens
+python3 scripts/video_input.py ./demo.webm "Step by step, what occurs?" --model google/gemini-2.5-flash
+```
+
+**Supported formats:** mp4, webm, mov, avi, mkv, m4v (auto-detected for local files)
 
 ---
 
