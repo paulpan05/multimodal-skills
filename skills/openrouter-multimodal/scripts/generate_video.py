@@ -1,17 +1,33 @@
 #!/usr/bin/env python3
-"""Generate video via OpenRouter (async: submit, poll, download)."""
+"""Generate video via OpenRouter (async: submit, poll, download).
+
+Supports text-to-video and image-to-video (first/last frame).
+"""
 
 import argparse
+import base64
 import json
+import mimetypes
 import os
 import sys
 import time
 import urllib.request
 
 
+def _encode_image_file(path: str) -> str:
+    """Read a local image file and return a base64 data URI."""
+    mime, _ = mimetypes.guess_type(path)
+    if not mime:
+        mime = "image/jpeg"
+    with open(path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode()
+    return f"data:{mime};base64,{b64}"
+
+
 def submit_video_job(prompt: str, model: str = "bytedance/seedance-2.0",
                      resolution: str = "720p", aspect_ratio: str = "16:9",
-                     duration: int = None, callback_url: str = None):
+                     duration: int = None, callback_url: str = None,
+                     frame_images: list = None):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         print("Error: OPENROUTER_API_KEY not set", file=sys.stderr)
@@ -22,6 +38,8 @@ def submit_video_job(prompt: str, model: str = "bytedance/seedance-2.0",
         payload["duration"] = duration
     if callback_url:
         payload["callback_url"] = callback_url
+    if frame_images:
+        payload["frame_images"] = frame_images
 
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -31,7 +49,7 @@ def submit_video_job(prompt: str, model: str = "bytedance/seedance-2.0",
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=120) as resp:
             result = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -104,10 +122,27 @@ if __name__ == "__main__":
     parser.add_argument("--poll-interval", type=int, default=30, help="Seconds between polls")
     parser.add_argument("--max-wait", type=int, default=600, help="Max seconds to wait")
     parser.add_argument("--job-id", help="Skip submit, poll existing job ID")
+    img_group = parser.add_argument_group("image-to-video")
+    img_group.add_argument("--image", help="Local image file to use as a frame (base64-encoded)")
+    img_group.add_argument("--image-url", help="Image URL to use as a frame")
+    img_group.add_argument("--frame-type", default="first_frame",
+                           choices=["first_frame", "last_frame"],
+                           help="Whether image is the first or last frame (default: first_frame)")
     args = parser.parse_args()
 
+    # Build frame_images if an image is provided
+    frame_images = None
+    if args.image or args.image_url:
+        image_url = args.image_url if args.image_url else _encode_image_file(args.image)
+        frame_images = [{
+            "type": "image_url",
+            "image_url": {"url": image_url},
+            "frame_type": args.frame_type,
+        }]
+
     job_id = args.job_id or submit_video_job(
-        args.prompt, args.model, args.resolution, args.aspect_ratio, args.duration
+        args.prompt, args.model, args.resolution, args.aspect_ratio, args.duration,
+        frame_images=frame_images,
     )
     result = poll_job(job_id, args.poll_interval, args.max_wait)
     download_content(job_id, args.output)

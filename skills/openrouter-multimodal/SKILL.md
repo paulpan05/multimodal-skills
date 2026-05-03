@@ -61,9 +61,20 @@ python3 scripts/generate_image.py "A cat wearing a hat" --aspect-ratio 16:9 --si
 ### Video Generation
 
 ```bash
+# Text-to-video
 python3 scripts/generate_video.py "A golden retriever playing on a beach" -o video.mp4
 
+# Image-to-video (local file as first frame)
+python3 scripts/generate_video.py "Camera slowly zooms out from the scene" --image photo.jpg --duration 10 -o video.mp4
+
+# Image-to-video (URL as first frame)
+python3 scripts/generate_video.py "The scene comes to life" --image-url https://example.com/frame.png -o video.mp4
+
+# Image as last frame
+python3 scripts/generate_video.py "Camera zooms into this scene" --image target.jpg --frame-type last_frame -o video.mp4
+
 # Options: --model, --resolution (480p, 720p, 1080p), --aspect-ratio, --duration, --poll-interval, --max-wait
+#          --image (local file), --image-url (URL), --frame-type (first_frame|last_frame)
 # Resume polling an existing job:
 python3 scripts/generate_video.py "unused" --job-id <JOB_ID> -o video.mp4
 ```
