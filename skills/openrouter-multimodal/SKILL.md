@@ -1,7 +1,7 @@
 ---
 name: openrouter-multimodal
 description: "Generate images, video, audio (TTS/STT), and process multimodal content via OpenRouter's unified API. Trigger when user wants to generate images, video, TTS, STT, or send multimodal inputs (images, PDFs, audio, video) to models through OpenRouter."
-version: 2.0.0
+version: 2.1.0
 author: community
 license: MIT
 metadata:
