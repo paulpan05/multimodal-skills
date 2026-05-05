@@ -1,7 +1,7 @@
 ---
 name: openrouter-multimodal
 description: "Generate images, video, audio (TTS/STT), and process multimodal content via OpenRouter's unified API. Trigger when user wants to generate images, video, TTS, STT, or send multimodal inputs (images, PDFs, audio, video) to models through OpenRouter."
-version: 2.2.0
+version: 2.3.0
 author: community
 license: MIT
 metadata:
@@ -53,13 +53,11 @@ python3 scripts/generate_image.py "A cat wearing a hat" --aspect-ratio 16:9 --si
 | Model | Notes |
 |-------|-------|
 | `openrouter/auto` | **Default.** Auto-routes to best image-capable model |
+| `openai/gpt-5.4-image-2` | OpenAI's latest, top-tier quality |
 | `google/gemini-3.1-flash-image-preview` | Extended aspect ratios, 0.5K–4K |
-| `google/gemini-2.5-flash-image` | Standard |
-| `black-forest-labs/flux.2-pro` | Image-only (auto-fallback) |
-| `black-forest-labs/flux.2-flex` | Image-only (auto-fallback) |
-| `bytedance-seed/seedream-4.5` | Image-only (auto-fallback) |
-
-> **Note:** Image-only models (Flux, Seedream) don't support the `text` modality. The script auto-detects 404 errors and retries with `["image"]` only — no extra flags needed.
+| `black-forest-labs/flux.2-pro` | High-end, strong prompt adherence |
+| `bytedance-seed/seedream-4.5` | Free, ByteDance's latest |
+| `google/gemini-2.5-flash-image` | Fast, free tier available |
 
 ### Video Generation
 
@@ -344,7 +342,7 @@ curl -s "https://openrouter.ai/api/v1/models?output_modalities=transcription" | 
 |---------|-----|
 | 401 Unauthorized | Check `OPENROUTER_API_KEY` is set and valid |
 | Model not found | Verify slug via `curl .../models?output_modalities=...` |
-| No image in response | Ensure `"modalities": ["image", "text"]` is in payload |
+| No image in response | Some models return text-only; try a different model |
 | Video still pending | Generation takes 30s–minutes; keep polling |
 | Audio input rejected | Must be base64-encoded; URLs not supported for audio |
 | Poor image quality | Use `image_config.image_size: "2K"` or `"4K"` |

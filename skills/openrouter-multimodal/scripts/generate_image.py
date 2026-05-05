@@ -11,19 +11,16 @@ import urllib.request
 
 def generate_image(prompt: str, model: str = "openrouter/auto",
                    aspect_ratio: str = "1:1", image_size: str = "1K",
-                   output: str = "generated.png", modalities: list = None):
+                   output: str = "generated.png"):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         print("Error: OPENROUTER_API_KEY not set", file=sys.stderr)
         sys.exit(1)
 
-    if modalities is None:
-        modalities = ["image", "text"]
-
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "modalities": modalities,
+        "modalities": ["image"],
     }
 
     if aspect_ratio != "1:1" or image_size != "1K":
@@ -48,29 +45,8 @@ def generate_image(prompt: str, model: str = "openrouter/auto",
             result = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
-        # Fallback: image-only models reject "text" modality — retry with ["image"]
-        if e.code == 404 and "image" in modalities and "text" in modalities:
-            print("Retrying with image-only modalities...", file=sys.stderr)
-            payload["modalities"] = ["image"]
-            data = json.dumps(payload).encode("utf-8")
-            req = urllib.request.Request(
-                "https://openrouter.ai/api/v1/chat/completions",
-                data=data,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    result = json.loads(resp.read().decode("utf-8"))
-            except urllib.error.HTTPError as e2:
-                body2 = e2.read().decode("utf-8", errors="replace")
-                print(f"HTTP {e2.code}: {body2}", file=sys.stderr)
-                sys.exit(1)
-        else:
-            print(f"HTTP {e.code}: {body}", file=sys.stderr)
-            sys.exit(1)
+        print(f"HTTP {e.code}: {body}", file=sys.stderr)
+        sys.exit(1)
 
     images = result.get("choices", [{}])[0].get("message", {}).get("images", [])
     if not images:
