@@ -1,7 +1,7 @@
 ---
 name: openrouter-multimodal
 description: "Generate images, video, audio (TTS/STT), and process multimodal content via OpenRouter's unified API. Trigger when user wants to generate images, video, TTS, STT, or send multimodal inputs (images, PDFs, audio, video) to models through OpenRouter."
-version: 2.1.0
+version: 2.2.0
 author: community
 license: MIT
 metadata:
@@ -55,8 +55,11 @@ python3 scripts/generate_image.py "A cat wearing a hat" --aspect-ratio 16:9 --si
 | `openrouter/auto` | **Default.** Auto-routes to best image-capable model |
 | `google/gemini-3.1-flash-image-preview` | Extended aspect ratios, 0.5K–4K |
 | `google/gemini-2.5-flash-image` | Standard |
-| `black-forest-labs/flux.2-pro` | Image-only output |
-| `black-forest-labs/flux.2-flex` | Image-only output |
+| `black-forest-labs/flux.2-pro` | Image-only (auto-fallback) |
+| `black-forest-labs/flux.2-flex` | Image-only (auto-fallback) |
+| `bytedance-seed/seedream-4.5` | Image-only (auto-fallback) |
+
+> **Note:** Image-only models (Flux, Seedream) don't support the `text` modality. The script auto-detects 404 errors and retries with `["image"]` only — no extra flags needed.
 
 ### Video Generation
 
